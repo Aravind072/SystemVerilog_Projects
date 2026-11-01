@@ -1,0 +1,11 @@
+package fifo_package;
+  `include "fifo_trans.sv"
+  `include "fifo_gen.sv"
+  `include "driver.sv"
+  `include "write_mon.sv"
+  `include "fifo_rd_mon.sv"
+  `include "fifo_model.sv"
+  `include "fifo_score.sv"
+  `include "fifo_env.sv"
+  `include "fifo_test.sv"
+endpackage

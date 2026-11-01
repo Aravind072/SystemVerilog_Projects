@@ -1,0 +1,67 @@
+// TEST 2 Extension Descriptor Object: Focuses on payload edge boundaries
+class fifo_trans_extnd1 extends fifo_trans;
+  constraint VALID_DATA_TEST2 { wdata inside {8'h00, 8'hFF}; }
+  constraint valid_random_wr  { wr_en dist {1 := 70, 0 := 30}; }
+  constraint valid_random_rd  { rd_en dist {1 := 30, 0 := 70}; }
+endclass
+
+// TEST 3 Extension Descriptor Object: Forces concurrent heavy load conditions
+class fifo_trans_extnd2 extends fifo_trans;
+  constraint force_heavy_rw   { wr_en dist {1 := 90, 0 := 10};
+                                rd_en dist {1 := 90, 0 := 10}; }
+endclass
+
+class fifo_test;
+  virtual fifo_if.WR_BFM wr_if;
+  virtual fifo_if.RD_BFM rd_if;
+  virtual fifo_if.WR_MON wrmon_if;
+  virtual fifo_if.RD_MON rdmon_if;
+
+  fifo_env env;
+  fifo_trans_extnd1 data_h1;
+  fifo_trans_extnd2 data_h2;
+
+  function new(
+    virtual fifo_if.WR_BFM wr_if, virtual fifo_if.RD_BFM rd_if,
+    virtual fifo_if.WR_MON wrmon_if, virtual fifo_if.RD_MON rdmon_if
+  );
+    this.wr_if = wr_if;       this.rd_if = rd_if;
+    this.wrmon_if = wrmon_if; this.rdmon_if = rdmon_if;
+    env = new(wr_if, rd_if, wrmon_if, rdmon_if);
+  endfunction
+
+  task build_and_run();
+    begin
+      // --- TEST 1 SEQUENCE ---
+      if ($test$plusargs("TEST1")) begin
+        env.build();
+        env.gen.num_transactions = 600; // General random walk
+        env.run();
+        wait(env.gen.done.triggered);
+        #100ns; $finish;
+      end
+
+      // --- TEST 2 SEQUENCE ---
+      if ($test$plusargs("TEST2")) begin
+        data_h1 = new();
+        env.build();
+        env.gen.num_transactions = 1000; // Increased to deeply saturate 32 depth slots
+        env.gen.gen_trans = data_h1; 
+        env.run();
+        wait(env.gen.done.triggered);
+        #100ns; $finish;
+      end
+
+      // --- TEST 3 SEQUENCE ---
+      if ($test$plusargs("TEST3")) begin
+        data_h2 = new();
+        env.build();
+        env.gen.num_transactions = 500; 
+        env.gen.gen_trans = data_h2;
+        env.run();
+        wait(env.gen.done.triggered);
+        #100ns; $finish;
+      end
+    end
+  endtask
+endclass

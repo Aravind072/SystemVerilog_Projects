@@ -1,0 +1,38 @@
+`include "fifo_if.sv"
+`include "fifo_package.sv"
+
+module fifo_top;
+  import fifo_package::*;
+
+  bit clk;
+  always #5 clk = ~clk; // 100MHz clock signal generation
+
+  fifo_if inf(clk);
+
+  // Device Under Verification (DUV) Map Instantiation
+  fifo duv (
+    .clk   (inf.clk),
+    .rst   (inf.rst), 
+    .wdata (inf.wdata),
+    .rdata (inf.rdata),
+    .wr_en (inf.wr_en),
+    .rd_en (inf.rd_en),
+    .full  (inf.full),
+    .empty (inf.empty)
+  );
+
+  fifo_test test_h;
+
+  initial begin
+    test_h = new(inf.WR_BFM, inf.RD_BFM, inf.WR_MON, inf.RD_MON);
+    
+    // Physical Active-High Reset Trigger Boot Sequence
+    inf.cb.rst   <= 1'b1;
+    inf.cb.wr_en <= 1'b0;
+    inf.cb.rd_en <= 1'b0;
+    ##2;
+    inf.cb.rst   <= 1'b0; // Release system reset state vector
+
+    test_h.build_and_run();
+  end
+endmodule

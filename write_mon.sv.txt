@@ -1,0 +1,21 @@
+class write_mon;
+  virtual fifo_if.WR_MON wrmon_if;
+  mailbox wmon2ref;
+
+  function new(virtual fifo_if.WR_MON wrmon_if, mailbox wmon2ref);
+    this.wrmon_if = wrmon_if;
+    this.wmon2ref = wmon2ref;
+  endfunction
+
+  task run();
+    forever begin
+      fifo_trans tr = new();
+      @(wrmon_if.cb);
+      #1ns; 
+      if (wrmon_if.cb.wr_en && !wrmon_if.cb.full) begin
+        tr.wdata = wrmon_if.cb.wdata;
+        wmon2ref.put(tr);
+      end
+    end
+  endtask
+endclass

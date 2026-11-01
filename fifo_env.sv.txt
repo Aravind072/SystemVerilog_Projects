@@ -1,0 +1,43 @@
+class fifo_env;
+  fifo_gen    gen;
+  driver      drv;
+  write_mon   wmon;
+  fifo_rd_mon rmon;
+  fifo_model  ref_mod;
+  fifo_score  scb;
+
+  mailbox gen2drv, wmon2ref, ref2scb, rmon2scb;
+  
+  virtual fifo_if.WR_BFM wr_if;
+  virtual fifo_if.RD_BFM rd_if;
+  virtual fifo_if.WR_MON wrmon_if;
+  virtual fifo_if.RD_MON rdmon_if;
+
+  function new(
+    virtual fifo_if.WR_BFM wr_if, virtual fifo_if.RD_BFM rd_if,
+    virtual fifo_if.WR_MON wrmon_if, virtual fifo_if.RD_MON rdmon_if
+  );
+    this.wr_if = wr_if;       this.rd_if = rd_if;
+    this.wrmon_if = wrmon_if; this.rdmon_if = rdmon_if;
+  endfunction
+
+  function void build();
+    gen2drv  = new(); wmon2ref = new();
+    ref2scb  = new(); rmon2scb = new();
+
+    gen     = new(gen2drv);
+    drv     = new(wr_if, gen2drv);
+    wmon    = new(wrmon_if, wmon2ref);
+    rmon    = new(rdmon_if, rmon2scb);
+    ref_mod = new(wmon2ref, ref2scb);
+    scb     = new(ref2scb, rmon2scb);
+  endfunction
+
+  task run();
+    fork
+      gen.run();     drv.run();
+      wmon.run();    rmon.run();
+      ref_mod.run(); scb.run();
+    join_none
+  endtask
+endclass

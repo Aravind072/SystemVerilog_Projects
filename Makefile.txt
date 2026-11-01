@@ -1,0 +1,28 @@
+# ==============================================================================
+# QUESTASIM VERIFICATION MAKEFILE AUTOMATION FOR 32-DEPTH FIFO
+# ==============================================================================
+TOP      = fifo_top
+RTL      = fifo.v
+TB_IF    = fifo_if.sv
+TB_PKG   = fifo_package.sv
+TB_TOP   = fifo_top.sv
+WORK     = work
+COV_DB   = functional_cov.ucdb
+TEST     = TEST1
+
+all: clean compile run
+
+clean:
+	rm -rf $(WORK) transcript *.log *.wlf modelsim.ini *.ucdb coverage_html_report
+
+compile:
+	vlib $(WORK)
+	vmap work $(WORK)
+	vlog -work $(WORK) $(RTL)
+	vlog -sv -work $(WORK) +cover=fbcst $(TB_IF) $(TB_PKG) $(TB_TOP)
+
+run:
+	vsim -c -coverage -assertdebug $(WORK).$(TOP) +$(TEST) \
+		-do "run -all; coverage save -onexit $(COV_DB); quit -f" \
+		-l simulation.log
+	vcover report -html -htmldir coverage_html_report $(COV_DB)

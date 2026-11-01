@@ -1,0 +1,20 @@
+class driver;
+  virtual fifo_if.WR_BFM wr_if;
+  mailbox gen2drv;
+
+  function new(virtual fifo_if.WR_BFM wr_if, mailbox gen2drv);
+    this.wr_if   = wr_if;
+    this.gen2drv = gen2drv;
+  endfunction
+
+  task run();
+    forever begin
+      fifo_trans tr;
+      gen2drv.get(tr);
+      @(wr_if.cb);
+      wr_if.cb.wr_en <= tr.wr_en;
+      wr_if.cb.rd_en <= tr.rd_en;
+      wr_if.cb.wdata <= tr.wdata;
+    end
+  endtask
+endclass

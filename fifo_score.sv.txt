@@ -1,0 +1,40 @@
+covergroup fifo_covergroup with function sample(
+  bit wr_en, bit rd_en, bit full, bit empty, bit [7:0] rdata
+);
+  option.per_instance = 1;
+  cp_wr: coverpoint wr_en;
+  cp_rd: coverpoint rd_en;
+  cp_fl: coverpoint full;
+  cp_mt: coverpoint empty;
+  
+  cross_overflow:  cross cp_wr, cp_fl  { bins hit = binsof(cp_wr.active) && binsof(cp_fl.is_full); }
+  cross_underflow: cross cp_rd, cp_mt  { bins hit = binsof(cp_rd.active) && binsof(cp_mt.is_empty); }
+endgroup
+
+class fifo_score;
+  mailbox ref2scb;
+  mailbox rmon2scb;
+  fifo_covergroup fifo_cg;
+
+  function new(mailbox ref2scb, mailbox rmon2scb);
+    this.ref2scb  = ref2scb;
+    this.rmon2scb = rmon2scb;
+    fifo_cg       = new();
+  endfunction
+
+  task run();
+    fifo_trans exp_tr, act_tr;
+    forever begin
+      ref2scb.get(exp_tr);
+      rmon2scb.get(act_tr);
+      
+      if (act_tr.rdata === exp_tr.rdata) begin
+        $display("[SCOREBOARD MATCH] DUV Output: %h == Reference Model Match!", act_tr.rdata);
+      end else begin
+        $error("[SCOREBOARD MISMATCH] DUV Output: %h != Reference Prediction: %h", act_tr.rdata, exp_tr.rdata);
+      end
+
+      fifo_cg.sample(act_tr.wr_en, act_tr.rd_en, act_tr.full, act_tr.empty, act_tr.rdata);
+    end
+  endtask
+endclass

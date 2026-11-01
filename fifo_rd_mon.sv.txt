@@ -1,0 +1,25 @@
+class fifo_rd_mon;
+  virtual fifo_if.RD_MON rdmon_if;
+  mailbox rmon2scb;
+
+  function new(virtual fifo_if.RD_MON rdmon_if, mailbox rmon2scb);
+    this.rdmon_if = rdmon_if;
+    this.rmon2scb = rmon2scb;
+  endfunction
+
+  task run();
+    forever begin
+      fifo_trans tr = new();
+      @(rdmon_if.cb);
+      #1ns;
+      if (rdmon_if.cb.rd_en && !rdmon_if.cb.empty) begin
+        tr.wr_en = rdmon_if.cb.wr_en;
+        tr.rd_en = rdmon_if.cb.rd_en;
+        tr.full  = rdmon_if.cb.full;
+        tr.empty = rdmon_if.cb.empty;
+        tr.rdata = rdmon_if.cb.rdata;
+        rmon2scb.put(tr);
+      end
+    end
+  endtask
+endclass

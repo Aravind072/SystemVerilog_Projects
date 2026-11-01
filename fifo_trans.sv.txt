@@ -1,0 +1,18 @@
+class fifo_trans;
+  rand bit wr_en;
+  rand bit rd_en;
+  rand bit [7:0] wdata;
+       bit [7:0] rdata;
+       bit full;
+       bit empty;
+
+  constraint ctrl_dist { 
+    wr_en dist {1 := 50, 0 := 50};
+    rd_en dist {1 := 45, 0 := 55}; 
+  }
+
+  virtual function void display(string tag);
+    $display("[%s] WR:%b RD:%b WData:%h RData:%h F:%b E:%b", 
+              tag, wr_en, rd_en, wdata, rdata, full, empty);
+  endfunction
+endclass

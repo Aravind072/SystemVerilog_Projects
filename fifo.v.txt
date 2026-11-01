@@ -1,0 +1,70 @@
+// ============================================================================
+// Module Name:  fifo
+// Description:  Synchronous FIFO with a Depth of 32 and Data Width of 8 bits.
+//               Uses 6-bit pointers where the 5 lower bits [4:0] handle memory 
+//               addressing, and the MSB [5] serves as the phase status bit.
+// ============================================================================
+module fifo (
+    input            clk,
+    input            rst,    // Active-High Reset
+    input      [7:0] wdata,
+    output reg [7:0] rdata,
+    input            wr_en,
+    input            rd_en,
+    output           full,
+    output           empty
+);
+
+    // 32-slot by 8-bit memory storage array
+    reg [7:0] mem [31:0];
+    
+    // 6-bit pointers: 5 bits for addressing (0 to 31) + 1 MSB Phase Bit
+    reg [5:0] wr_ptr;
+    reg [5:0] rd_ptr;
+    integer i;
+
+    // 1. Data Write Operations Block
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            for (i = 0; i < 32; i = i + 1) begin
+                mem[i] <= 8'b0;
+            end
+        end else if (wr_en && !full) begin
+            mem[wr_ptr[4:0]] <= wdata; // Masked to [4:0] to prevent out-of-bounds simulation faults
+        end
+    end
+
+    // 2. Data Read Operations Block
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            rdata <= 8'b0;
+        end else if (rd_en && !empty) begin
+            rdata <= mem[rd_ptr[4:0]]; // Masked to [4:0] to extract correct slot indices
+        end
+    end
+
+    // 3. Pointer Management (Fixed race conditions using non-blocking '<=')
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            wr_ptr <= 6'b0;
+        end else if (wr_en && !full) begin
+            wr_ptr <= wr_ptr + 1'b1;
+        end
+    end
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            rd_ptr <= 6'b0;
+        end else if (rd_en && !empty) begin
+            rd_ptr <= rd_ptr + 1'b1;
+        end
+    end
+
+    // 4. Status Flag Logic
+    // Empty: Read and Write pointers are identical in both value and phase bit position
+    assign empty = (wr_ptr == rd_ptr);
+    
+    // Full: The addressing index [4:0] matches, but the MSB phase indicators [5] are opposites
+    assign full  = ((wr_ptr[4:0] == rd_ptr[4:0]) && (wr_ptr[5] != rd_ptr[5]));
+
+endmodule

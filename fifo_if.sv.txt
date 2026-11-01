@@ -1,0 +1,38 @@
+interface fifo_if (input bit clk);
+  logic rst;
+  logic wr_en;
+  logic rd_en;
+  logic [7:0] wdata;
+  logic [7:0] rdata;
+  logic full;
+  logic empty;
+
+  clocking cb @(posedge clk);
+    default input #1ns output #1ns;
+    output rst, wr_en, rd_en, wdata;
+    input  rdata, full, empty;
+  endclocking
+
+  modport WR_BFM (clocking cb, input clk);
+  modport RD_BFM (clocking cb, input clk);
+  modport WR_MON (clocking cb, input clk);
+  modport RD_MON (clocking cb, input clk);
+
+  // ==========================================================================
+  //                     SYSTEMVERILOG ASSERTIONS (SVA)
+  // ==========================================================================
+  default disable iff (rst);
+
+  assert_flags_mutex: assert property (
+    @(posedge clk) !(full && empty)
+  ) else $error("[SVA_ERROR] Protocol Mismatch: DUV is asserting both FULL and EMPTY flags!");
+
+  assert_overflow_protection: assert property (
+    @(posedge clk) (full && wr_en && !rd_en) |=> full
+  ) else $error("[SVA_ERROR] Overflow Fault: DUV dropped 'full' flag during blocked write operation.");
+
+  assert_underflow_protection: assert property (
+    @(posedge clk) (empty && rd_en && !wr_en) |=> empty
+  ) else $error("[SVA_ERROR] Underflow Fault: DUV dropped 'empty' flag during blocked read operation.");
+
+endinterface

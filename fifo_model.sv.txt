@@ -1,0 +1,22 @@
+class fifo_model;
+  mailbox wmon2ref;
+  mailbox ref2scb;
+  bit [7:0] golden_queue[$]; 
+
+  function new(mailbox wmon2ref, mailbox ref2scb);
+    this.wmon2ref = wmon2ref;
+    this.ref2scb  = ref2scb;
+  endfunction
+
+  task run();
+    fifo_trans wtr, exp_tr;
+    forever begin
+      wmon2ref.get(wtr);
+      golden_queue.push_back(wtr.wdata);
+      
+      exp_tr = new();
+      exp_tr.rdata = golden_queue.pop_front();
+      ref2scb.put(exp_tr);
+    end
+  endtask
+endclass
